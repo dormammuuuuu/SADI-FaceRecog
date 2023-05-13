@@ -1,3 +1,7 @@
+Original Repo:
+
+https://github.com/Martlgap/FaceIDLight
+
 # FaceIDLight
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Contributors](https://img.shields.io/github/contributors/martlgap/FaceIDLight?color=green)](https://img.shields.io/github/contributors/martlgap/FaceIDLight?color=green)
