@@ -1,43 +1,10 @@
-"""
-This is an example of using the k-nearest-neighbors (KNN) algorithm for face recognition.
-
-When should I use this example?
-This example is useful when you wish to recognize a large set of known people,
-and make a prediction for an unknown person in a feasible computation time.
-
-Algorithm Description:
-The knn classifier is first trained on a set of labeled (known) faces and can then predict the person
-in a live stream by finding the k most similar faces (images with closet face-features under euclidean distance)
-in its training set, and performing a majority vote (possibly weighted) on their label.
-
-For example, if k=3, and the three closest face images to the given image in the training set are one image of Biden
-and two images of Obama, The result would be 'Obama'.
-
-* This implementation uses a weighted vote, such that the votes of closer-neighbors are weighted more heavily.
-
-Usage:
-
-1. Prepare a set of images of the known people you want to recognize. Organize the images in a single directory
-   with a sub-directory for each known person.
-
-2. Then, call the 'train' function with the appropriate parameters. Make sure to pass in the 'model_save_path' if you
-   want to save the model to disk so you can re-use the model without having to re-train it.
-
-3. Call 'predict' and pass in your trained model to recognize the people in a live video stream.
-
-NOTE: This example requires scikit-learn, opencv and numpy to be installed! You can install it with pip:
-
-$ pip3 install scikit-learn
-$ pip3 install numpy
-$ pip3 install opencv-contrib-python
-
-"""
-
 import cv2
 import math
 from sklearn import neighbors
+import glob
 import os
 import os.path
+import datetime
 import pickle
 from PIL import Image, ImageDraw
 import face_recognition
@@ -48,37 +15,32 @@ import numpy as np
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'JPG'}
 
 
-def train(train_dir, model_save_path=None, n_neighbors=None, knn_algo='ball_tree', verbose=False):
-    """
-    Trains a k-nearest neighbors classifier for face recognition.
+def train(train_dir, model_save_path=None, n_neighbors=None, knn_algo='ball_tree', verbose=True):
+    
 
-    :param train_dir: directory that contains a sub-directory for each known person, with its name.
+    # Folder to save text files
+    encodings_folder = "encodings/"
 
-     (View in source code to see train_dir example tree structure)
-
-     Structure:
-        <train_dir>/
-        ├── <person1>/
-        │   ├── <somename1>.jpeg
-        │   ├── <somename2>.jpeg
-        │   ├── ...
-        ├── <person2>/
-        │   ├── <somename1>.jpeg
-        │   └── <somename2>.jpeg
-        └── ...
-
-    :param model_save_path: (optional) path to save model on disk
-    :param n_neighbors: (optional) number of neighbors to weigh in classification. Chosen automatically if not specified
-    :param knn_algo: (optional) underlying data structure to support knn.default is ball_tree
-    :param verbose: verbosity of training
-    :return: returns knn classifier that was trained on the given data.
-    """
-    X = []
-    y = []
+    # Create the encodings folder if it doesn't exist
+    if not os.path.exists(encodings_folder):
+        os.makedirs(encodings_folder)
 
     # Loop through each person in the training set
     for class_dir in os.listdir(train_dir):
+        X = []
+        y = []
         if not os.path.isdir(os.path.join(train_dir, class_dir)):
+            continue
+
+        txt_file_path = os.path.join(encodings_folder, f"{class_dir}.txt")
+
+        if os.path.exists(txt_file_path):
+            if verbose:
+                print(f"Skipping folder {class_dir} as text file already exists.")
+            # Load existing encodings from the text file
+            encodings, labels = load_encodings_from_text(txt_file_path)
+            X.extend(encodings)
+            y.extend(labels)
             continue
 
         # Loop through each training image for the current person
@@ -94,6 +56,18 @@ def train(train_dir, model_save_path=None, n_neighbors=None, knn_algo='ball_tree
                 # Add face encoding for current image to the training set
                 X.append(face_recognition.face_encodings(image, known_face_locations=face_bounding_boxes)[0])
                 y.append(class_dir)
+
+        # Save face encodings to a text file
+        if len(X) > 0:
+            save_encodings_to_text(X, y, txt_file_path)
+
+    # Load existing encodings from text files
+    for txt_file in os.listdir(encodings_folder):
+        txt_file_path = os.path.join(encodings_folder, txt_file)
+        if os.path.isfile(txt_file_path):
+            encodings, labels = load_encodings_from_text(txt_file_path)
+            X.extend(encodings)
+            y.extend(labels)
 
     # Determine how many neighbors to use for weighting in the KNN classifier
     if n_neighbors is None:
@@ -113,18 +87,26 @@ def train(train_dir, model_save_path=None, n_neighbors=None, knn_algo='ball_tree
     return knn_clf
 
 
-def predict(X_frame, knn_clf=None, model_path=None, distance_threshold=0.5):
-    """
-    Recognizes faces in given image using a trained KNN classifier
 
-    :param X_frame: frame to do the prediction on.
-    :param knn_clf: (optional) a knn classifier object. if not specified, model_save_path must be specified.
-    :param model_path: (optional) path to a pickled knn classifier. if not specified, model_save_path must be knn_clf.
-    :param distance_threshold: (optional) distance threshold for face classification. the larger it is, the more chance
-           of mis-classifying an unknown person as a known one.
-    :return: a list of names and face locations for the recognized faces in the image: [(name, bounding box), ...].
-        For faces of unrecognized persons, the name 'unknown' will be returned.
-    """
+def load_encodings_from_text(file_path):
+    encodings = []
+    labels = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            encoding_str, label = line.strip().split(':')
+            encoding = [float(val) for val in encoding_str.split()]
+            encodings.append(encoding)
+            labels.append(label)
+    return encodings, labels
+
+def save_encodings_to_text(encodings, labels, file_path):
+    with open(file_path, 'w') as file:
+        for encoding, label in zip(encodings, labels):
+            encoding_line = ' '.join(str(val) for val in encoding)
+            file.write(f'{encoding_line}:{label}\n')
+
+
+def predict(X_frame, knn_clf=None, model_path=None, distance_threshold=0.45):
     if knn_clf is None and model_path is None:
         raise Exception("Must supply knn classifier either thourgh knn_clf or model_path")
 
@@ -151,13 +133,6 @@ def predict(X_frame, knn_clf=None, model_path=None, distance_threshold=0.5):
 
 
 def show_prediction_labels_on_image(frame, predictions):
-    """
-    Shows the face recognition results visually.
-
-    :param frame: frame to show the predictions on
-    :param predictions: results of the predict function
-    :return opencv suited image to be fitting with cv2.imshow fucntion:
-    """
     pil_image = Image.fromarray(frame)
     draw = ImageDraw.Draw(pil_image)
 
@@ -170,8 +145,7 @@ def show_prediction_labels_on_image(frame, predictions):
         # Draw a box around the face using the Pillow module
         draw.rectangle(((left, top), (right, bottom)), outline=(0, 0, 255))
 
-        # There's a bug in Pillow where it blows up with non-UTF-8 text
-        # when using the default bitmap font
+        # There's a bug in Pillow where it blows up with non-UTF-8 text when using the default bitmap font
         name = name.encode("UTF-8")
 
         # Draw a label with a name below the face
@@ -186,16 +160,33 @@ def show_prediction_labels_on_image(frame, predictions):
     opencvimage = np.array(pil_image)
     return opencvimage
 
+def get_latest_model(model_dir):
+    # Get a list of model files in the model_dir
+    model_files = glob.glob(os.path.join(model_dir, "*.clf"))
+
+    # Sort the model files by modified time in descending order
+    sorted_models = sorted(model_files, key=os.path.getmtime, reverse=True)
+
+    # Return the path of the latest model file
+    if sorted_models:
+        return sorted_models[0]
+    else:
+        return None
+
+
 
 if __name__ == "__main__":
-    print("Training KNN classifier...")
-    classifier = train("knn_examples/train", model_save_path="trained_knn_model.clf", n_neighbors=2)
-    print("Training complete!")
+    print("Starting Face Recognition Module by SADI Team")
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    classifier = train("dataset/train", model_save_path=f"models/{timestamp}.clf")
+
+    # Load the latest model from the model_save_dir
+    latest_model = get_latest_model('models/')
+    print("Loaded model:", latest_model)
     # process one frame in every 30 frames for speed
-    process_this_frame = 29
-    print('Setting cameras up...')
-    # multiple cameras can be used with the format url = 'http://username:password@camera_ip:port'
-    url = 'http://admin:admin@192.168.0.106:8081/'
+    process_this_frame = 14
+    print('Starting camera...')
+    url = 1
     cap = cv2.VideoCapture(url)
     while 1 > 0:
         ret, frame = cap.read()
@@ -204,8 +195,8 @@ if __name__ == "__main__":
             # Image resizing for more stable streaming
             img = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
             process_this_frame = process_this_frame + 1
-            if process_this_frame % 30 == 0:
-                predictions = predict(img, model_path="trained_knn_model.clf")
+            if process_this_frame % 15 == 0:
+                predictions = predict(img, model_path=latest_model)
             frame = show_prediction_labels_on_image(frame, predictions)
             cv2.imshow('camera', frame)
             if ord('q') == cv2.waitKey(10):
