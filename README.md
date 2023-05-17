@@ -1,16 +1,14 @@
-# Face Recognition
+Original Repo:
 
-_You can also read a translated version of this file [in Chinese 简体中文版](https://github.com/ageitgey/face_recognition/blob/master/README_Simplified_Chinese.md) or [in Korean 한국어](https://github.com/ageitgey/face_recognition/blob/master/README_Korean.md) or [in Japanese 日本語](https://github.com/m-i-k-i/face_recognition/blob/master/README_Japanese.md)._
+https://github.com/Martlgap/FaceIDLight
 
-Recognize and manipulate faces from Python or from the command line with
-the world's simplest face recognition library.
-
-Built using [dlib](http://dlib.net/)'s state-of-the-art face recognition
-built with deep learning. The model has an accuracy of 99.38% on the
-[Labeled Faces in the Wild](http://vis-www.cs.umass.edu/lfw/) benchmark.
-
-This also provides a simple `face_recognition` command line tool that lets
-you do face recognition on a folder of images from the command line!
+# FaceIDLight
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Contributors](https://img.shields.io/github/contributors/martlgap/FaceIDLight?color=green)](https://img.shields.io/github/contributors/martlgap/FaceIDLight?color=green)
+[![Last Commit](https://img.shields.io/github/last-commit/martlgap/FaceIDLight)](https://img.shields.io/github/last-commit/martlgap/FaceIDLight)
+[![License](https://img.shields.io/badge/license-MIT-blue)](https://img.shields.io/badge/license-MIT-blue)
+[![Downloads](https://img.shields.io/github/downloads/Martlgap/FaceIDLight/total)](https://img.shields.io/github/downloads/Martlgap/FaceIDLight/total)
+[![CI testing](https://github.com/Martlgap/FaceIDLight/actions/workflows/ci-testing.yml/badge.svg)](https://github.com/Martlgap/FaceIDLight/actions/workflows/ci-testing.yml)
 
 
 [![PyPI](https://img.shields.io/pypi/v/face_recognition.svg)](https://pypi.python.org/pypi/face_recognition)
