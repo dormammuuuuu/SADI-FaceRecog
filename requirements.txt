@@ -1,8 +1,6 @@
+face_recognition_models
+Click>=6.0
+dlib>=19.3.0
 numpy
-opencv-python
 Pillow
-scikit-image
-scikit-learn
-scipy
-tflite-runtime
-tqdm
+scipy>=0.17.0
